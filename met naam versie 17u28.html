@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt-generator voor erfgoedreconstructie</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f3ede1; --paper-2:#ece4d4; --ink:#23211c; --ink-soft:#4d493f;
+    --line:#cdc3ad; --line-soft:#ddd4c0; --ochre:#a85e2e; --ochre-deep:#8a4a21;
+    --brick:#9c3f2e; --slate:#445049; --good:#4a6b4a; --warn:#9a5b1d;
+    --card:#faf6ee; --shadow:rgba(35,33,28,.12);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;font-family:"Hanken Grotesk",sans-serif;color:var(--ink);
+    background:
+      radial-gradient(circle at 12% -5%, #fbf7ee 0%, transparent 42%),
+      radial-gradient(circle at 95% 0%, #efe7d6 0%, transparent 38%),
+      var(--paper);
+    background-attachment:fixed;line-height:1.5;-webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.4;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+    mix-blend-mode:multiply;
+  }
+  .wrap{position:relative;z-index:1;max-width:1240px;margin:0 auto;padding:0 28px 80px;}
+
+  header.masthead{padding:46px 0 30px;border-bottom:2px solid var(--ink);margin-bottom:8px;}
+  .eyebrow{font-size:12px;letter-spacing:.32em;text-transform:uppercase;color:var(--ochre-deep);font-weight:600;margin-bottom:14px;}
+  h1{font-family:"Fraunces",serif;font-weight:500;font-size:clamp(30px,5vw,52px);line-height:1.02;margin:0 0 12px;letter-spacing:-.01em;}
+  h1 em{font-style:italic;color:var(--brick);}
+  .lede{max-width:62ch;color:var(--ink-soft);font-size:16px;}
+  .lede b{color:var(--ink);font-weight:600;}
+  .byline{margin-top:12px;font-family:"Fraunces",serif;font-style:italic;font-size:15px;color:var(--slate);}
+  .byline b{font-style:normal;color:var(--ink);font-weight:600;}
+  .flowbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:22px;font-family:"Fraunces",serif;font-size:13.5px;color:var(--slate);}
+  .flowbar span.node{background:var(--paper-2);border:1px solid var(--line);padding:5px 12px;border-radius:2px;}
+  .flowbar span.arr{color:var(--ochre);font-weight:600;}
+
+  .howto{margin-top:22px;background:var(--card);border:1px solid var(--line-soft);border-radius:5px;box-shadow:0 1px 0 var(--shadow);}
+  .howto summary{cursor:pointer;list-style:none;padding:15px 22px;font-family:"Fraunces",serif;font-size:17px;font-weight:500;color:var(--ink);display:flex;align-items:center;gap:10px;}
+  .howto summary::-webkit-details-marker{display:none;}
+  .howto summary::before{content:"+";font-family:"Hanken Grotesk",sans-serif;font-weight:700;color:var(--ochre);font-size:18px;width:18px;display:inline-block;}
+  .howto[open] summary::before{content:"–";}
+  .howto summary:hover{color:var(--ochre-deep);}
+  .howto-body{padding:0 24px 20px;border-top:1px solid var(--line-soft);}
+  .howto-body p{font-size:14px;color:var(--ink-soft);margin:14px 0;}
+  .howto-body p b,.howto-body li b{color:var(--ink);font-weight:600;}
+  .howto-body ol{margin:0;padding-left:20px;}
+  .howto-body li{font-size:14px;color:var(--ink-soft);margin-bottom:8px;padding-left:4px;}
+
+  .layout{display:grid;grid-template-columns:1fr 430px;gap:34px;margin-top:34px;align-items:start;}
+  @media(max-width:980px){.layout{grid-template-columns:1fr;}}
+
+  .step{background:var(--card);border:1px solid var(--line-soft);border-radius:4px;padding:22px 24px;margin-bottom:18px;box-shadow:0 1px 0 var(--shadow);}
+  .step-head{display:flex;align-items:baseline;gap:12px;margin-bottom:4px;}
+  .step-num{font-family:"Fraunces",serif;font-size:13px;font-weight:600;color:#fff;background:var(--ink);width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:0 0 26px;align-self:center;}
+  .step h2{font-family:"Fraunces",serif;font-weight:500;font-size:21px;margin:0;letter-spacing:-.01em;}
+  .step .hint{font-size:13.5px;color:var(--ink-soft);margin:6px 0 16px;}
+  .step .hint b{color:var(--ink);font-weight:600;}
+
+  label.fld{display:block;font-size:12.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 6px;}
+  label.fld .note{font-weight:400;text-transform:none;letter-spacing:0;color:#9a8f78;}
+  input[type=text],textarea,select{width:100%;font-family:inherit;font-size:14.5px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:9px 11px;margin-bottom:14px;transition:border-color .15s,box-shadow .15s;}
+  input[type=text]:focus,textarea:focus,select:focus{outline:none;border-color:var(--ochre);box-shadow:0 0 0 3px rgba(168,94,46,.14);}
+  textarea{resize:vertical;min-height:54px;line-height:1.45;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media(max-width:520px){.row2{grid-template-columns:1fr;}}
+
+  button{font-family:inherit;cursor:pointer;border:none;}
+  .btn{background:var(--ink);color:var(--paper);font-weight:600;font-size:13.5px;padding:9px 16px;border-radius:3px;letter-spacing:.02em;transition:transform .1s,background .15s;}
+  .btn:hover{background:#000;transform:translateY(-1px);}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+  .btn.ghost:hover{background:var(--paper-2);transform:none;}
+  .btn.small{padding:6px 12px;font-size:12.5px;}
+
+  .uploader{border:1.5px dashed var(--line);border-radius:4px;padding:18px;text-align:center;background:var(--paper);color:var(--ink-soft);font-size:13.5px;cursor:pointer;transition:border-color .15s,background .15s;margin-bottom:16px;}
+  .uploader:hover{border-color:var(--ochre);background:#fbf7ee;}
+  .uploader b{color:var(--ochre-deep);}
+  .src{display:grid;grid-template-columns:64px 1fr;gap:14px;padding:14px;margin-bottom:12px;border:1px solid var(--line-soft);border-radius:4px;background:var(--paper);position:relative;}
+  .src.sel{border-color:var(--ochre);box-shadow:0 0 0 2px rgba(168,94,46,.15);}
+  .src .thumb{width:64px;height:64px;border-radius:3px;object-fit:cover;background:var(--paper-2);border:1px solid var(--line);}
+  .src .thumb.ph{display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink-soft);text-align:center;}
+  .src .meta select,.src .meta input{margin-bottom:8px;font-size:13px;padding:6px 8px;}
+  .src .meta .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  @media(max-width:600px){.src .meta .row3{grid-template-columns:1fr;}}
+  .src .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;}
+  .src .incl{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--slate);}
+  .src .incl input{width:auto;margin:0;accent-color:var(--ochre);}
+  .src .del{background:transparent;color:var(--brick);font-size:18px;line-height:1;padding:0 4px;}
+  .badge{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:20px;}
+  .badge.kern{background:#e7d3c2;color:var(--ochre-deep);}
+  .badge.aanvullend{background:#dde2d4;color:var(--slate);}
+  .badge.zwak{background:#e3ddd0;color:var(--ink-soft);}
+
+  .warnbox{border-left:3px solid var(--warn);background:#f6ecdb;padding:9px 13px;border-radius:0 3px 3px 0;font-size:13px;color:#6b4313;margin:4px 0 14px;}
+  .warnbox.ok{border-color:var(--good);background:#e6ecdf;color:#39512f;}
+
+  .litem{display:flex;gap:10px;align-items:flex-start;background:var(--paper);border:1px solid var(--line-soft);border-radius:3px;padding:8px 11px;margin-bottom:8px;font-size:13.5px;}
+  .litem span{flex:1;}
+  .litem button{background:transparent;color:var(--brick);font-size:16px;line-height:1;padding:0 2px;flex:0 0 auto;}
+  .addrow{display:flex;gap:8px;}
+  .addrow input{margin-bottom:0;}
+  .empty{font-size:13px;color:var(--ink-soft);font-style:italic;}
+
+  .panel{position:sticky;top:22px;}
+  .panel-card{background:var(--ink);color:#f0e9da;border-radius:5px;overflow:hidden;box-shadow:0 12px 34px rgba(35,33,28,.22);}
+  .panel-card .ph{padding:18px 22px 14px;border-bottom:1px solid rgba(240,233,218,.16);}
+  .panel-card .ph .kicker{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--ochre);font-weight:600;}
+  .panel-card .ph h3{font-family:"Fraunces",serif;font-weight:500;font-size:20px;margin:6px 0 2px;color:#fbf7ee;}
+  .panel-card .ph p{font-size:12px;margin:0;color:#b9b1a0;}
+  .promptout{font-family:"Hanken Grotesk",monospace;white-space:pre-wrap;font-size:13px;line-height:1.5;padding:18px 22px;max-height:330px;overflow:auto;color:#ece4d2;}
+  .promptout .lbl{color:var(--ochre);font-weight:700;}
+  .panel-actions{display:flex;gap:9px;padding:0 22px 18px;}
+  .panel-actions .btn{flex:1;text-align:center;background:var(--ochre);}
+  .panel-actions .btn:hover{background:var(--ochre-deep);}
+  .panel-actions .btn.ghost{flex:0 0 auto;background:transparent;color:#ece4d2;border:1px solid rgba(240,233,218,.25);}
+  .panel-steps{padding:2px 22px 18px;font-size:12.5px;color:#c2baa8;}
+  .panel-steps .h{font-family:"Fraunces",serif;color:#fbf7ee;font-size:13px;border-top:1px solid rgba(240,233,218,.16);padding-top:14px;margin-bottom:8px;}
+  .panel-steps ol{margin:0;padding-left:18px;}
+  .panel-steps li{margin-bottom:5px;line-height:1.45;}
+  .panel-steps b{color:#fbf7ee;font-weight:600;}
+
+  .sidecard{margin-top:18px;background:var(--card);border:1px solid var(--line-soft);border-radius:5px;padding:20px 22px;}
+  .sidecard h3{font-family:"Fraunces",serif;font-weight:500;font-size:19px;margin:0 0 4px;}
+  .sidecard .sub{font-size:13px;color:var(--ink-soft);margin:0 0 16px;}
+
+  .checkrow{display:flex;gap:10px;align-items:flex-start;font-size:13px;margin-bottom:11px;}
+  .dot{width:17px;height:17px;border-radius:50%;flex:0 0 17px;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;line-height:1;}
+  .dot.ok{background:var(--good);}
+  .dot.no{background:var(--warn);}
+  .ctext b{display:block;font-weight:600;color:var(--ink);}
+  .ctext em{font-style:normal;color:var(--warn);font-size:12px;}
+
+  .track-title{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:14px 0 9px;display:flex;align-items:center;gap:8px;}
+  .track-title.corr{color:var(--good);}
+  .track-title.struct{color:var(--warn);}
+  .track-title::after{content:"";flex:1;height:1px;background:var(--line);}
+  .fbtns{display:flex;flex-wrap:wrap;gap:7px;}
+  .fbtn{font-size:12.5px;padding:7px 11px;border-radius:3px;border:1px solid var(--line);background:var(--paper);color:var(--ink);text-align:left;transition:transform .1s,border-color .15s;}
+  .fbtn:hover{transform:translateY(-1px);}
+  .fbtn.corr:hover{border-color:var(--good);}
+  .fbtn.struct:hover{border-color:var(--warn);}
+  .stopnote{font-size:12.5px;color:#6b4313;background:#f6ecdb;border-radius:3px;padding:9px 12px;margin-top:14px;border-left:3px solid var(--warn);}
+
+  .logitem{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line-soft);font-size:13.5px;}
+  .logitem:first-of-type{border-top:none;}
+  .logitem .it{font-family:"Fraunces",serif;font-weight:600;color:var(--ink-soft);white-space:nowrap;}
+  .logitem .act .tg{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:1px 7px;border-radius:20px;margin-right:7px;}
+  .logitem .act .tg.c{background:#dbe4d5;color:var(--good);}
+  .logitem .act .tg.s{background:#efe0c9;color:var(--warn);}
+
+  footer{margin-top:50px;padding-top:22px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-soft);max-width:74ch;}
+  footer b{color:var(--ink);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Instrument · AI-gestuurde gevelreconstructie</div>
+    <h1>Prompt-generator voor <em>erfgoedreconstructie</em></h1>
+    <p class="lede">Zet fragmentarische bronnen om in een heldere <b>Engelse prompt</b> voor de visuele reconstructie van een verdwenen of gewijzigd gebouw. Vul de stappen in, kopieer de prompt, en stuur na elke poging bij op basis van wat het beeld fout doet.</p>
+    <p class="byline">Een instrument van <b>Robbe Vandersteene</b></p>
+    <div class="flowbar">
+      <span class="node">Bronnen + parameters</span>
+      <span class="arr">→</span>
+      <span class="node">Prompt (Engels)</span>
+      <span class="arr">→</span>
+      <span class="node">Beeldfunctie Gemini</span>
+      <span class="arr">→</span>
+      <span class="node">Wat was fout?</span>
+      <span class="arr">↺</span>
+    </div>
+
+    <details class="howto" open>
+      <summary>Hoe werkt het?</summary>
+      <div class="howto-body">
+        <p>Vul de stappen links van boven naar onder in. Rechts bouwt de prompt zich live mee op, samen met een <b>toetsing</b> die nagaat of alles volledig en periode-specifiek is.</p>
+        <ol>
+          <li><b>Onderwerp, stijl en doelvlak.</b> Bepaal welk gebouw je reconstrueert, in welke stijl en uit welke periode, en welk aanzicht. Stijl en jaartal houden het beeld stijlvast.</li>
+          <li><b>Bronnen uploaden en classificeren.</b> Geef per bron het type, de sterkte (kern, aanvullend, zwak) en het vlak dat ze toont. De bestandsnaam komt mee in de prompt, want Gemini leest die.</li>
+          <li><b>Bronselectie.</b> Vink de bronnen aan die meegaan. Kies complementaire bronnen en hou het op maximaal twee.</li>
+          <li><b>Rolverdeling.</b> Geef elke gekozen bron één taak: leidend, detaillering, context, en zo verder.</li>
+          <li><b>Perspectief verankeren.</b> Kies één bron die het gezichtspunt bepaalt.</li>
+          <li><b>Harde parameters.</b> De vaste, niet-onderhandelbare gegevens uit je bronanalyse, in het Engels.</li>
+          <li><b>Materialen en belichting.</b> Sturen de sfeer van het beeld; pas ze aan de periode aan.</li>
+          <li><b>Negatieve instructies.</b> Alles wat je expliciet wil uitsluiten, in het Engels.</li>
+        </ol>
+        <p>Kopieer daarna de prompt en open de <b>beeldfunctie van Google Gemini</b>. Upload daar dezelfde referentiebeelden die je hierboven hebt geclassificeerd en plak de prompt. Beoordeel het resultaat en gebruik de knoppen onder <b>Wat was fout?</b>: een <b>corrigeerbare</b> fout voegt een aanpassing toe aan de prompt waarna je opnieuw genereert; een <b>structurele</b> fout log je en aanvaard je. Het iteratielogboek houdt het volledige verloop bij.</p>
+      </div>
+    </details>
+  </header>
+
+  <div class="layout">
+    <!-- ================= LEFT : STEPS ================= -->
+    <div class="steps">
+
+      <section class="step">
+        <div class="step-head"><span class="step-num">1</span><h2>Onderwerp, stijl & doelvlak</h2></div>
+        <p class="hint">Stijl en jaartal worden in de prompt vertaald naar een expliciete stijlconsistentie, zodat het beeld niet terugvalt op een generieke of anachronistische look.</p>
+        <label class="fld" for="gebouw">Te reconstrueren gebouw <span class="note">· Engelse output</span></label>
+        <input type="text" id="gebouw" placeholder="bv. the vanished market hall in …">
+        <div class="row2">
+          <div>
+            <label class="fld" for="stijl">Architecturale stijl</label>
+            <input type="text" id="stijl" placeholder="bv. Gothic / Baroque / Art Deco">
+          </div>
+          <div>
+            <label class="fld" for="jaartal">Jaartal / periode</label>
+            <input type="text" id="jaartal" placeholder="bv. circa 1480 / late 15th century">
+          </div>
+        </div>
+        <div class="row2">
+          <div>
+            <label class="fld" for="doelvlak">Doelvlak</label>
+            <select id="doelvlak">
+              <option>the front facade</option>
+              <option>a side facade</option>
+              <option>the volume in three-quarter view</option>
+              <option>the full exterior</option>
+            </select>
+          </div>
+          <div>
+            <label class="fld" for="compositie">Compositie</label>
+            <select id="compositie">
+              <option value="dominant">enige, dominante volume</option>
+              <option value="context">binnen de omgeving / context</option>
+              <option value="neutraal">geen specifieke nadruk</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="step">
+        <div class="step-head"><span class="step-num">2</span><h2>Bronnen uploaden & classificeren</h2></div>
+        <p class="hint">Label elke bron op <b>type</b>, <b>sterkte</b> (kern / aanvullend / zwak) en het <b>vlak</b> dat ze beschrijft.</p>
+        <div class="uploader" id="uploader"><b>+ Bron toevoegen</b> &nbsp;·&nbsp; klik om een afbeelding te uploaden</div>
+        <input type="file" id="fileInput" accept="image/*" multiple hidden>
+        <div id="srcList"></div>
+      </section>
+
+      <section class="step">
+        <div class="step-head"><span class="step-num">3</span><h2>Bronselectie</h2></div>
+        <p class="hint">Vink hierboven de bronnen aan die je opneemt. Complementair in plaats van concurrerend, en <b>maximaal twee</b> beeldbronnen.</p>
+        <div id="selWarn"></div>
+      </section>
+
+      <section class="step">
+        <div class="step-head"><span class="step-num">4</span><h2>Rolverdeling</h2></div>
+        <p class="hint">Geef elke geselecteerde bron één rol. Bij hetzelfde vlak: rollen splitsen om verdringing te vermijden.</p>
+        <div id="roleList"><p class="empty">Selecteer eerst bronnen in stap 2.</p></div>
+      </section>
+
+      <section class="step">
+        <div class="step-head"><span class="step-num">5</span><h2>Perspectief verankeren</h2></div>
+        <p class="hint">Leg het perspectief expliciet vast aan één bron om het wegschuiven van het gezichtspunt te voorkomen.</p>
+        <label class="fld" for="anchor">Ankerbron voor perspectief</label>
+        <select id="anchor"></select>
+        <label class="fld" for="perspdesc">Perspectiefbeschrijving <span class="note">· Engels</span></label>
+        <input type="text" id="perspdesc" placeholder="bv. a slightly elevated three-quarter view">
+      </section>
+
+      <section class="step">
+        <div class="step-head"><span class="step-num">6</span><h2>Harde parameters</h2></div>
+        <p class="hint">De vastgelegde, niet-onderhandelbare gegevens uit je bronanalyse — <b>in het Engels</b>, want ze verschijnen letterlijk onder <i>Architectural Constraints</i>.</p>
+        <div id="paramList"></div>
+        <div class="addrow">
+          <input type="text" id="paramInput" placeholder="bv. the facade is divided into exactly … bays">
+          <button class="btn small" id="addParam">Toevoegen</button>
+        </div>
+      </section>
+
+      <section class="step">
+        <div class="step-head"><span class="step-num">7</span><h2>Materialen, belichting & sfeer</h2></div>
+        <p class="hint">Stuurt de rubriek <i>Environment &amp; Style</i>. Pas materialen en licht aan de periode aan; laat leeg voor een neutrale beschrijving. <b>In het Engels.</b></p>
+        <label class="fld" for="materialen">Materialen & texturen</label>
+        <input type="text" id="materialen" placeholder="bv. weathered limestone and timber / red brick and cast iron / concrete and glass">
+        <label class="fld" for="belichting">Belichting & sfeer</label>
+        <input type="text" id="belichting" placeholder="bv. warm low-angled daylight / soft overcast light / early-morning haze">
+      </section>
+
+      <section class="step">
+        <div class="step-head"><span class="step-num">8</span><h2>Negatieve instructies</h2></div>
+        <p class="hint">Volledig zelf in te vullen. Negatieve sturing slaagt betrouwbaar — voeg toe wat je expliciet wil uitsluiten. <b>In het Engels.</b></p>
+        <div id="negList"></div>
+        <div class="addrow">
+          <input type="text" id="negInput" placeholder="bv. do not add any text, labels or watermarks">
+          <button class="btn small" id="addNeg">Toevoegen</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- ================= RIGHT : OUTPUT + CHECK + LOOP ================= -->
+    <div class="panel">
+      <div class="panel-card">
+        <div class="ph">
+          <div class="kicker">Output · Engels · iteratie <span id="iterNum">1</span></div>
+          <h3>Prompt</h3>
+          <p>Voor de beeldfunctie van Google Gemini.</p>
+        </div>
+        <div class="promptout" id="promptOut"></div>
+        <div class="panel-actions">
+          <button class="btn" id="copyBtn">Kopiëren</button>
+          <button class="btn ghost" id="resetBtn">Reset</button>
+        </div>
+        <div class="panel-steps">
+          <div class="h">In Google Gemini</div>
+          <ol>
+            <li>Kopieer de prompt hierboven.</li>
+            <li>Open de beeldfunctie van Google Gemini.</li>
+            <li><b>Upload dezelfde referentiebeelden</b> die je hierboven hebt geclassificeerd. Hou de bestandsnamen zoals ze zijn, want Gemini leest ze en de prompt verwijst ernaar.</li>
+            <li>Plak de prompt en genereer.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="sidecard">
+        <h3>Toetsing</h3>
+        <p class="sub">Controleert of de prompt volledig en periode-specifiek genoeg is vóór je genereert.</p>
+        <div id="checkList"></div>
+      </div>
+
+      <div class="sidecard">
+        <h3>Na de generatie — wat was fout?</h3>
+        <p class="sub">Twee sporen: een corrigeerbare fout past de prompt aan; een structurele beperking wordt gelogd, niet najagen.</p>
+        <div class="track-title corr">Corrigeerbaar · pas de prompt aan</div>
+        <div class="fbtns" id="corrBtns"></div>
+        <div class="track-title struct">Structureel · loggen & aanvaarden</div>
+        <div class="fbtns" id="structBtns"></div>
+        <div class="stopnote">Stopregel: blijf itereren zolang elke ronde meer historische duidelijkheid oplevert. Resten enkel structurele beperkingen, dan stopt de lus.</div>
+      </div>
+
+      <div class="sidecard">
+        <h3>Iteratielogboek</h3>
+        <p class="sub">Zelfdocumenterend verloop van de reconstructie.</p>
+        <div id="logList"><p class="empty">Nog geen iteraties geregistreerd.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Instrument voor de AI-gestuurde visuele reconstructie van verdwenen of gewijzigde erfgoedgebouwen, bruikbaar over verschillende periodes en stijlen heen. De generator levert een Engelse prompt in vaste rubrieken (Reference Instructions, Architectural Constraints, Environment &amp; Style, Negative Constraints). Werk wordt in het geheugen van deze sessie bewaard; voor blijvende opslag het bestand lokaal openen.
+    <br><br>
+    <b>© 2026 Robbe Vandersteene.</b> Ontworpen en eigendom van Robbe Vandersteene. Alle rechten voorbehouden.
+  </footer>
+</div>
+
+<script>
+/* ---------------- options ---------------- */
+const VLAKKEN = ["voorgevel","zijgevel","volume / vorm","gevel- / raamdetail","ruimtelijke ordening / context","plattegrond / footprint"];
+const TYPES = ["Gevel- / vormbron","Plattegrond","Lijntekening / context","Schilderij","Foto","Andere"];
+const STRENGTH = ["Kern","Aanvullend","Zwak"];
+const ROLES = [
+  "Leidend — perspectief, gevel & volume",
+  "Ondersteunend — ruimtelijke ordening",
+  "Geveldetaillering (vensters / openingen)",
+  "Informeert proporties (niet in beeld)",
+  "Contextbron (achtergrond)"
+];
+
+/* ---------------- state ---------------- */
+let sid = 0;
+const state = {
+  sources: [],
+  params: [],
+  neg: [],
+  iterInstructions: [],
+  iter: 1,
+  log: []
+};
+
+/* ---------------- role -> reference-instruction mapping ---------------- */
+const ROLEMAP = {
+  "Leidend — perspectief, gevel & volume":{
+    label:"Perspective, Massing & Facade",
+    sent:n=>`Use the ${n} reference as the absolute leading source for the camera viewpoint, the perspective, the overall volumetric massing, the principal facade composition, and the roof shape. The recognizable form and viewing angle must strictly follow this reference.`,
+    gov:"the perspective, principal facade composition, and massing"
+  },
+  "Ondersteunend — ruimtelijke ordening":{
+    label:"Spatial Layout & Orientation",
+    sent:n=>`Use the ${n} reference strictly to guide the spatial layout, the footprint orientation, and the precise placement of the building in its setting.`,
+    gov:"the spatial layout and footprint placement"
+  },
+  "Geveldetaillering (vensters / openingen)":{
+    label:"Facade & Window Detailing",
+    sent:n=>`Use the ${n} reference exclusively for the detailing of the windows and openings: their profile, glazing or tracery pattern, mullions or frames, and individual articulation. It must not alter the overall layout, the facade silhouette, or the perspective.`,
+    gov:"only the window and opening detail"
+  },
+  "Informeert proporties (niet in beeld)":{
+    label:"Footprint & Grid",
+    sent:n=>`Use the ${n} reference strictly to determine the footprint proportions and the structural grid that sets the spacing of the elements. It informs the geometry only and must not appear in the image as a drawing, linework, or top-view geometry.`,
+    gov:"the footprint proportions and structural grid"
+  },
+  "Contextbron (achtergrond)":{
+    label:"Urban Context",
+    sent:n=>`Use the ${n} reference to define the surrounding context and the placement of the background structures, keeping them as background context without letting them dominate the principal volume.`,
+    gov:"the surrounding context and background placement"
+  }
+};
+
+/* ---------------- feedback catalogues ---------------- */
+const CORR = [
+  {k:"conflict", label:"Bronnen vechten om hetzelfde vlak",
+   instr:"Split the roles explicitly: the leading facade reference governs the principal facade composition, while the second reference is limited strictly to detailing. Where they conflict, the facade reference overrides."},
+  {k:"collage", label:"Losse fragmenten / collage",
+   instr:"Render one single, unified building in one coherent scene. Do not produce a collage, diptych, or separate panels placed side by side."},
+  {k:"vorm", label:"Verkeerde / generieke massa",
+   instr:"Keep the building's overall proportions as defined by the references and the hard parameters; do not collapse it into a generic compact block or alter its silhouette."},
+  {k:"persp", label:"Perspectief schuift weg",
+   instr:"Lock the perspective strictly to the anchor reference and maintain that exact viewpoint; do not mirror, flip, or shift to a head-on frontal view."},
+  {k:"stijl", label:"Verkeerde periode / stijl",
+   instr:"Keep all architectural detailing, ornament, and materials strictly consistent with the specified period and style; do not introduce features from other periods."},
+  {k:"element", label:"Ongewenst element zichtbaar",
+   instr:"Remove the unwanted element entirely from the scene (also added to the negative constraints)."}
+];
+const STRUCT = [
+  {k:"telling", label:"Repetitieve elementen verkeerd geteld",
+   note:"Geteld herhaalde elementen (traveeën, kolommen, vensters) zijn onbetrouwbaar — het model telt niet consistent. Manueel narekenen, niet blijven itereren."},
+  {k:"detail", label:"Detaillering valt terug op generiek patroon",
+   note:"Fijn ornament of detaillering valt terug op een generieke stijl uit de trainingsdata; de prompt krijgt er weinig grip op — aanvaarden of manueel corrigeren."},
+  {k:"context", label:"Omgeving / context fout geplaatst",
+   note:"Omgeving en naburige elementen worden onbetrouwbaar geplaatst — uit beeld kaderen of aanvaarden."}
+];
+
+/* ---------------- helpers ---------------- */
+const $ = s => document.querySelector(s);
+const el = (t,c)=>{const e=document.createElement(t); if(c) e.className=c; return e;};
+const incl = ()=> state.sources.filter(s=>s.included);
+const find = id => state.sources.find(s=>s.id==id);
+
+/* ---------------- sources ---------------- */
+$("#uploader").addEventListener("click",()=>$("#fileInput").click());
+$("#fileInput").addEventListener("change",e=>{
+  [...e.target.files].forEach(f=>{
+    const r=new FileReader();
+    r.onload=ev=>addSource(f.name.replace(/\.[^.]+$/,""), ev.target.result);
+    r.readAsDataURL(f);
+  });
+  e.target.value="";
+});
+function addSource(name,dataUrl){
+  state.sources.push({id:++sid,name:name||("Bron "+sid),dataUrl,type:TYPES[0],strength:STRENGTH[0],vlak:VLAKKEN[0],included:false,role:ROLES[0]});
+  renderSources(); renderAll();
+}
+function renderSources(){
+  const box=$("#srcList"); box.innerHTML="";
+  if(!state.sources.length){ box.innerHTML='<p class="empty">Nog geen bronnen toegevoegd.</p>'; return; }
+  state.sources.forEach(s=>{
+    const c=el("div","src"+(s.included?" sel":""));
+    const thumb = s.dataUrl ? `<img class="thumb" src="${s.dataUrl}" alt="">` : `<div class="thumb ph">geen beeld</div>`;
+    c.innerHTML=`
+      ${thumb}
+      <div class="meta">
+        <div class="top">
+          <label class="incl"><input type="checkbox" ${s.included?"checked":""} data-inc="${s.id}"> opnemen</label>
+          <span class="badge ${s.strength.toLowerCase()}">${s.strength}</span>
+          <button class="del" data-del="${s.id}" title="verwijderen">×</button>
+        </div>
+        <input type="text" value="${s.name.replace(/"/g,'&quot;')}" data-name="${s.id}">
+        <div class="row3">
+          <select data-type="${s.id}">${TYPES.map(t=>`<option ${t===s.type?"selected":""}>${t}</option>`).join("")}</select>
+          <select data-str="${s.id}">${STRENGTH.map(t=>`<option ${t===s.strength?"selected":""}>${t}</option>`).join("")}</select>
+          <select data-vlak="${s.id}">${VLAKKEN.map(t=>`<option ${t===s.vlak?"selected":""}>${t}</option>`).join("")}</select>
+        </div>
+      </div>`;
+    box.appendChild(c);
+  });
+  box.querySelectorAll("[data-inc]").forEach(i=>i.onchange=e=>{find(e.target.dataset.inc).included=e.target.checked; renderSources(); renderAll();});
+  box.querySelectorAll("[data-del]").forEach(b=>b.onclick=e=>{state.sources=state.sources.filter(x=>x.id!=e.target.dataset.del); renderSources(); renderAll();});
+  box.querySelectorAll("[data-name]").forEach(i=>i.oninput=e=>{find(e.target.dataset.name).name=e.target.value; renderAll();});
+  box.querySelectorAll("[data-type]").forEach(s=>s.onchange=e=>{find(e.target.dataset.type).type=e.target.value; renderAll();});
+  box.querySelectorAll("[data-str]").forEach(s=>s.onchange=e=>{find(e.target.dataset.str).strength=e.target.value; renderSources(); renderAll();});
+  box.querySelectorAll("[data-vlak]").forEach(s=>s.onchange=e=>{find(e.target.dataset.vlak).vlak=e.target.value; renderAll();});
+}
+
+/* ---------------- selection warnings ---------------- */
+function renderSelWarn(){
+  const box=$("#selWarn"); box.innerHTML="";
+  const sel=incl(); const msgs=[];
+  if(sel.length>2) msgs.push({w:true,t:`Je hebt ${sel.length} bronnen geselecteerd. Drie of meer beeldbronnen integreren zelden tot één coherent gebouw — beperk tot twee.`});
+  const byVlak={}; sel.forEach(s=>{(byVlak[s.vlak]=byVlak[s.vlak]||[]).push(s);});
+  Object.entries(byVlak).forEach(([v,arr])=>{ if(arr.length>1) msgs.push({w:true,t:`Twee bronnen beschrijven hetzelfde vlak (${v}) — risico op conflict en verdringing. Splits de rollen of schrap er één.`}); });
+  if(sel.length && !msgs.length) msgs.push({w:false,t:"Selectie is complementair en binnen de grens van twee bronnen. Klaar voor rolverdeling."});
+  if(!sel.length) msgs.push({w:true,t:"Nog geen bronnen geselecteerd."});
+  msgs.forEach(m=>{const d=el("div","warnbox"+(m.w?"":" ok")); d.textContent=m.t; box.appendChild(d);});
+}
+
+/* ---------------- roles ---------------- */
+function renderRoles(){
+  const box=$("#roleList"); box.innerHTML="";
+  const sel=incl();
+  if(!sel.length){ box.innerHTML='<p class="empty">Selecteer eerst bronnen in stap 2.</p>'; return; }
+  sel.forEach(s=>{
+    box.insertAdjacentHTML("beforeend",
+      `<label class="fld">${s.name} <span class="note">· ${s.type}</span></label>
+       <select data-role="${s.id}">${ROLES.map(r=>`<option ${r===s.role?"selected":""}>${r}</option>`).join("")}</select>`);
+  });
+  box.querySelectorAll("[data-role]").forEach(se=>se.onchange=e=>{find(e.target.dataset.role).role=e.target.value; renderAll();});
+}
+
+/* ---------------- anchor ---------------- */
+function renderAnchor(){
+  const sel=incl(); const a=$("#anchor"); const cur=a.value;
+  a.innerHTML = sel.length ? sel.map(s=>`<option ${s.name===cur?"selected":""}>${s.name}</option>`).join("") : `<option>— selecteer eerst bronnen —</option>`;
+}
+
+/* ---------------- params ---------------- */
+function renderParams(){
+  const box=$("#paramList"); box.innerHTML="";
+  if(!state.params.length){ box.innerHTML='<p class="empty">Nog geen parameters toegevoegd.</p>'; }
+  state.params.forEach((p,i)=>{
+    const d=el("div","litem"); d.innerHTML=`<span>${p.replace(/</g,"&lt;")}</span><button data-p="${i}">×</button>`; box.appendChild(d);
+  });
+  box.querySelectorAll("[data-p]").forEach(b=>b.onclick=e=>{state.params.splice(+e.target.dataset.p,1); renderParams(); renderAll();});
+}
+$("#addParam").onclick=()=>{const v=$("#paramInput").value.trim(); if(v){state.params.push(v); $("#paramInput").value=""; renderParams(); renderAll();}};
+$("#paramInput").addEventListener("keydown",e=>{if(e.key==="Enter")$("#addParam").click();});
+
+/* ---------------- negatives ---------------- */
+function renderNeg(){
+  const box=$("#negList"); box.innerHTML="";
+  if(!state.neg.length){ box.innerHTML='<p class="empty">Nog geen negatieve instructies toegevoegd.</p>'; }
+  state.neg.forEach((n,i)=>{
+    const d=el("div","litem"); d.innerHTML=`<span>${n.replace(/</g,"&lt;")}</span><button data-n="${i}">×</button>`; box.appendChild(d);
+  });
+  box.querySelectorAll("[data-n]").forEach(b=>b.onclick=e=>{state.neg.splice(+e.target.dataset.n,1); renderNeg(); renderAll();});
+}
+$("#addNeg").onclick=()=>{const v=$("#negInput").value.trim(); if(v){state.neg.push(v); $("#negInput").value=""; renderNeg(); renderAll();}};
+$("#negInput").addEventListener("keydown",e=>{if(e.key==="Enter")$("#addNeg").click();});
+
+/* ---------------- prompt builder ---------------- */
+function buildPrompt(){
+  const sel=incl();
+  const gebouw=($("#gebouw").value||"the building").trim();
+  const stijl=$("#stijl").value.trim();
+  const jaartal=$("#jaartal").value.trim();
+  const doelvlak=$("#doelvlak").value;
+  const compositie=$("#compositie").value;
+  const anchor=$("#anchor").value;
+  const persp=$("#perspdesc").value.trim();
+  const materialen=$("#materialen").value.trim();
+  const belichting=$("#belichting").value.trim();
+  const n=sel.length;
+  const numWord={1:"one",2:"two",3:"three",4:"four",5:"five"};
+  let refPhrase;
+  if(n===0) refPhrase="the attached reference images";
+  else if(n===1) refPhrase="the attached reference image";
+  else refPhrase=`the ${numWord[n]||n} attached reference images`;
+
+  const COMP={
+    dominant:" as the principal subject and the single dominant volume in the scene",
+    context:" as the principal subject, set within its surrounding historical context and not isolated from it",
+    neutraal:" as the principal subject"
+  };
+  const compClause=COMP[compositie]!==undefined?COMP[compositie]:COMP.dominant;
+
+  let subj = `a historical reconstruction of ${gebouw}`;
+  if(stijl){ subj += `, a ${stijl} building`; if(jaartal) subj += ` from ${jaartal}`; }
+  else if(jaartal){ subj += `, dating from ${jaartal}`; }
+
+  let p="";
+  let opening=`Act as a professional architectural visualizer. Use ${refPhrase} to generate a high-end architectural photograph of ${subj}`;
+  if(persp) opening+=`, captured from ${persp}`;
+  opening+=`, showing ${doelvlak}${compClause}.`;
+  p+=opening+`\n\n`;
+
+  p+=`Reference Instructions:\n`;
+  if(n){
+    sel.forEach(s=>{ const m=ROLEMAP[s.role]; p+=`${m?m.label:"Reference"}: ${m?m.sent(s.name):("Use the "+s.name+" reference for its assigned role.")}\n`; });
+    if(n>=2){
+      const govs=sel.map(s=>{const m=ROLEMAP[s.role]; return `the ${s.name} reference governs ${m?m.gov:"its assigned aspect"}`;});
+      let ov=`Override Rule: Where the references conflict, ${govs.join("; ")}.`;
+      if(anchor && anchor.indexOf("—")===-1) ov+=` The ${anchor} reference governs the perspective and viewpoint.`;
+      ov+=` Treat all references as information about one single building in one unified scene, not as separate views shown side by side.`;
+      p+=ov+`\n`;
+    }
+  } else { p+=`(Select and assign at least one reference image in steps 2 to 4.)\n`; }
+  p+=`\n`;
+
+  p+=`Architectural Constraints:\n`;
+  if(stijl || jaartal){
+    let s=`All architectural detailing, ornament, and materials must be strictly consistent with `;
+    if(stijl && jaartal) s+=`${stijl} architecture of the ${jaartal} period`;
+    else if(stijl) s+=`${stijl} architecture`;
+    else s+=`the architecture of the ${jaartal} period`;
+    s+=`; do not introduce features from other periods.`;
+    p+=s+`\n`;
+  }
+  if(state.params.length){ state.params.forEach(x=>{ x=(x||"").trim(); if(x) p+=`${/[.!?]$/.test(x)?x:x+"."}\n`; }); }
+  else if(!stijl && !jaartal){ p+=`(No hard parameters defined yet.)\n`; }
+  p+=`\n`;
+
+  p+=`Environment & Style:\n`;
+  let env=`High-end architectural photography capturing a realistic historical reconstruction`;
+  if(belichting) env+=`, illuminated by ${belichting}`;
+  env+=`, casting soft, defined shadows`;
+  if(materialen) env+=` that emphasise the ${materialen}`;
+  env+=`. Shot with a professional, sharp architectural lens for clean volumetric clarity, straight vertical lines, and a natural depth of field that keeps the principal structure in crisp, sharp focus.\n\n`;
+  p+=env;
+
+  if(state.neg.length){
+    p+=`Negative Constraints:\n`;
+    state.neg.forEach(x=>{ x=(x||"").trim(); if(x) p+=`${/[.!?]$/.test(x)?x:x+"."}\n`; });
+    p+=`\n`;
+  }
+
+  if(state.iterInstructions.length){
+    p+=`Iteration Adjustments:\n`;
+    state.iterInstructions.forEach(x=>p+=`${x}\n`);
+  }
+  return p.trim();
+}
+function renderPrompt(){
+  const raw=buildPrompt();
+  const HEADERS=["Reference Instructions:","Architectural Constraints:","Environment & Style:","Negative Constraints:","Iteration Adjustments:"];
+  const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const html=raw.split("\n").map(line=>{
+    const t=line.trim();
+    if(HEADERS.includes(t)) return `<span class="lbl">${esc(t)}</span>`;
+    if(/^Override Rule:/.test(t)){ const rest=line.slice(line.indexOf(":")+1); return `<span class="lbl">Override Rule:</span>${esc(rest)}`; }
+    return esc(line);
+  }).join("\n");
+  $("#promptOut").innerHTML=html;
+  $("#iterNum").textContent=state.iter;
+}
+
+/* ---------------- toetsing ---------------- */
+function renderCheck(){
+  const sel=incl();
+  const byVlak={}; sel.forEach(s=>{(byVlak[s.vlak]=byVlak[s.vlak]||0); byVlak[s.vlak]++;});
+  const sameVlak=Object.values(byVlak).some(v=>v>1);
+  const checks=[
+    {ok:!!($("#stijl").value.trim()||$("#jaartal").value.trim()), t:"Stijl of jaartal ingevuld", warn:"Zonder stijl of periode valt het beeld terug op een generieke, mogelijk anachronistische look."},
+    {ok:sel.length>=1, t:"Minstens één bron met rol toegekend", warn:"Voeg minstens één bron toe en vink ze aan."},
+    {ok:sel.length<=2, t:"Niet meer dan twee beeldbronnen", warn:"Drie of meer bronnen integreren zelden tot één gebouw."},
+    {ok:!sameVlak, t:"Geen twee bronnen voor hetzelfde vlak", warn:"Bronnen voor hetzelfde vlak gaan in conflict; splits de rollen."},
+    {ok:!!$("#perspdesc").value.trim(), t:"Perspectief beschreven", warn:"Beschrijf het perspectief en veranker het aan één bron."},
+    {ok:state.params.length>=1, t:"Minstens één harde parameter", warn:"Voeg de niet-onderhandelbare gegevens uit je bronanalyse toe."},
+    {ok:state.neg.length>=1, t:"Minstens één negatieve instructie", warn:"Sluit expliciet uit wat je niet wil zien."}
+  ];
+  const box=$("#checkList"); box.innerHTML="";
+  checks.forEach(c=>{
+    const r=el("div","checkrow");
+    r.innerHTML=`<div class="dot ${c.ok?"ok":"no"}">${c.ok?"✓":"!"}</div>
+      <div class="ctext"><b>${c.t}</b>${c.ok?"":`<em>${c.warn}</em>`}</div>`;
+    box.appendChild(r);
+  });
+}
+
+/* ---------------- feedback loop ---------------- */
+function renderFeedback(){
+  const cb=$("#corrBtns"); cb.innerHTML="";
+  CORR.forEach(c=>{ const b=el("button","fbtn corr"); b.textContent=c.label; b.onclick=()=>handleCorr(c); cb.appendChild(b); });
+  const sb=$("#structBtns"); sb.innerHTML="";
+  STRUCT.forEach(s=>{ const b=el("button","fbtn struct"); b.textContent=s.label; b.onclick=()=>handleStruct(s); sb.appendChild(b); });
+}
+function handleCorr(c){
+  if(!state.iterInstructions.includes(c.instr)) state.iterInstructions.push(c.instr);
+  if(c.k==="element"){ const t="Do not include the unwanted element observed in the previous generation"; if(!state.neg.includes(t)){ state.neg.push(t); renderNeg(); } }
+  state.iter++;
+  state.log.push({iter:state.iter, type:"c", item:c.label, action:c.instr});
+  renderPrompt(); renderLog(); renderCheck();
+}
+function handleStruct(s){ state.log.push({iter:state.iter, type:"s", item:s.label, action:s.note}); renderLog(); }
+function renderLog(){
+  const box=$("#logList"); box.innerHTML="";
+  if(!state.log.length){ box.innerHTML='<p class="empty">Nog geen iteraties geregistreerd.</p>'; return; }
+  state.log.slice().reverse().forEach(l=>{
+    const d=el("div","logitem");
+    d.innerHTML=`<div class="it">iter ${l.iter}</div><div class="act"><span class="tg ${l.type}">${l.type==="c"?"corrigeerbaar":"structureel"}</span><b>${l.item}</b> — ${l.action}</div>`;
+    box.appendChild(d);
+  });
+}
+
+/* ---------------- copy / reset ---------------- */
+$("#copyBtn").onclick=()=>{
+  navigator.clipboard.writeText(buildPrompt()).then(()=>{ const b=$("#copyBtn"); const o=b.textContent; b.textContent="Gekopieerd ✓"; setTimeout(()=>b.textContent=o,1400); });
+};
+$("#resetBtn").onclick=()=>{
+  if(!confirm("Iteraties en aanpassingen wissen? Bronnen en parameters blijven staan.")) return;
+  state.iterInstructions=[]; state.iter=1; state.log=[];
+  renderPrompt(); renderLog();
+};
+
+/* ---------------- live bindings ---------------- */
+["#gebouw","#stijl","#jaartal","#doelvlak","#compositie","#perspdesc","#anchor","#materialen","#belichting"].forEach(s=>{
+  $(s).addEventListener("input",renderAll); $(s).addEventListener("change",renderAll);
+});
+
+/* ---------------- master render ---------------- */
+function renderAll(){ renderSelWarn(); renderRoles(); renderAnchor(); renderPrompt(); renderCheck(); }
+renderSources(); renderParams(); renderNeg(); renderFeedback(); renderLog(); renderAll();
+</script>
+</body>
+</html>
